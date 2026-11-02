@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HackerTube</title>
+<meta name="description" content="A YouTube-style index of videos that Hacker News commenters have recommended again and again over the years.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ff6600'/%3E%3Cpath d='M12 9l12 7-12 7z' fill='white'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#ffffff; --bg2:#f2f2f2; --bg3:#e5e5e5; --fg:#0f0f0f; --fg2:#606060; --fg3:#909090;
+  --line:#e5e5e5; --accent:#ff6600; --accent-soft:#fff1e6; --hover:#f2f2f2; --card:#fff;
+  --badge:rgba(0,0,0,.8); --shadow:0 4px 24px rgba(0,0,0,.12); --frame:#d9d9d9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f0f0f; --bg2:#212121; --bg3:#303030; --fg:#f1f1f1; --fg2:#aaaaaa; --fg3:#717171;
+    --line:#303030; --accent:#ff7a1f; --accent-soft:#2b1a0d; --hover:#272727; --card:#0f0f0f;
+    --badge:rgba(0,0,0,.8); --shadow:0 4px 24px rgba(0,0,0,.6); --frame:#303030;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f0f0f; --bg2:#212121; --bg3:#303030; --fg:#f1f1f1; --fg2:#aaaaaa; --fg3:#717171;
+  --line:#303030; --accent:#ff7a1f; --accent-soft:#2b1a0d; --hover:#272727; --card:#0f0f0f;
+  --badge:rgba(0,0,0,.8); --shadow:0 4px 24px rgba(0,0,0,.6); --frame:#303030;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.4 "Roboto","Helvetica Neue",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+svg{display:block}
+
+header{position:sticky;top:0;z-index:20;height:56px;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--bg)}
+.hbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none}
+.hbtn:hover{background:var(--hover)}
+.logo{display:flex;align-items:center;gap:4px;font-weight:700;font-size:19px;letter-spacing:-.6px;white-space:nowrap}
+.logo b{color:var(--accent);font-weight:700}
+.search{flex:1;display:flex;justify-content:center;min-width:0}
+.search form{display:flex;width:100%;max-width:600px}
+.search input{flex:1;min-width:0;height:40px;padding:0 16px;border:1px solid var(--frame);border-right:0;border-radius:20px 0 0 20px;background:var(--bg);color:var(--fg);font:inherit;font-size:15px;outline:none}
+.search input:focus{border-color:#1c62b9}
+.search button{width:64px;height:40px;border:1px solid var(--frame);border-radius:0 20px 20px 0;background:var(--bg2);display:grid;place-items:center}
+.hright{display:flex;gap:4px}
+
+.layout{display:flex}
+nav.side{position:sticky;top:56px;height:calc(100vh - 56px);width:220px;flex:none;padding:12px;overflow-y:auto}
+nav.side a{display:flex;align-items:center;gap:22px;height:40px;padding:0 12px;border-radius:10px;font-size:14px}
+nav.side a:hover{background:var(--hover)}
+nav.side a.on{background:var(--bg2);font-weight:500}
+nav.side hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+nav.side .foot{color:var(--fg3);font-size:12px;padding:8px 12px;line-height:1.5}
+nav.side .foot a{display:inline;height:auto;padding:0;color:var(--fg2)}
+nav.side .foot a:hover{background:none;text-decoration:underline}
+body.collapsed nav.side{width:72px;padding:4px}
+body.collapsed nav.side a{flex-direction:column;gap:6px;height:74px;justify-content:center;font-size:10px;padding:0}
+body.collapsed nav.side hr,body.collapsed nav.side .foot{display:none}
+main{flex:1;min-width:0;padding:0 24px 48px}
+
+.bar{position:sticky;top:56px;z-index:10;background:var(--bg);display:flex;gap:12px;align-items:center;padding:12px 0;overflow-x:auto;scrollbar-width:none}
+.bar::-webkit-scrollbar{display:none}
+.chip{flex:none;height:32px;padding:0 12px;border-radius:8px;background:var(--bg2);font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.chip:hover{background:var(--bg3)}
+.chip.on{background:var(--fg);color:var(--bg)}
+.panel{display:none;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:20px;padding:16px 0 20px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.panel.open{display:grid}
+.panel h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg2);font-weight:500;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.panel button{display:block;padding:5px 0;color:var(--fg2);text-align:left}
+.panel button:hover{color:var(--fg)}
+.panel button.on{color:var(--fg);font-weight:500}
+.panel button.on:not([data-f=sort])::after{content:" ✕";color:var(--fg3);font-size:11px}
+.status{color:var(--fg2);font-size:13px;margin:4px 0 16px}
+.status b{color:var(--fg);font-weight:500}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:40px 16px}
+.card{display:block;min-width:0}
+.thumb{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:var(--bg2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:border-radius .2s}
+.card:hover .thumb{border-radius:0}
+.dur{position:absolute;right:8px;bottom:8px;background:var(--badge);color:#fff;font-size:12px;font-weight:500;padding:1px 4px;border-radius:4px}
+.prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.4)}
+.prog i{display:block;height:100%;background:var(--accent);width:100%}
+.meta{padding-top:12px;padding-right:20px}
+.title{font-size:16px;font-weight:500;line-height:22px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0 0 4px}
+.sub{color:var(--fg2);font-size:14px;line-height:20px}
+.sub .ch:hover{color:var(--fg)}
+.hn{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:12px;font-weight:500;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:6px}
+.empty{padding:80px 20px;text-align:center;color:var(--fg2)}
+.empty h2{color:var(--fg);font-weight:500;font-size:20px}
+.sentinel{height:40px}
+
+.watch{display:grid;grid-template-columns:minmax(0,1fr) 402px;gap:24px;padding-top:24px;max-width:1750px;margin:0 auto}
+.player{aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#000}
+.player iframe{width:100%;height:100%;border:0;display:block}
+.player .noembed{width:100%;height:100%;display:grid;place-items:center;position:relative}
+.player .noembed img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.45}
+.player .noembed a{position:relative;background:#fff;color:#000;padding:12px 20px;border-radius:24px;font-weight:500}
+.wtitle{font-size:20px;font-weight:600;line-height:28px;margin:12px 0 8px}
+.wrow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;justify-content:space-between}
+.wch{display:flex;align-items:center;gap:12px}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600;font-size:17px;flex:none}
+.wch b{font-weight:600;font-size:16px;display:block}
+.wch span{color:var(--fg2);font-size:12px}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.pill{height:36px;padding:0 16px;border-radius:18px;background:var(--bg2);font-weight:500;display:flex;align-items:center;gap:6px}
+.pill:hover{background:var(--bg3)}
+.pill.on{background:var(--fg);color:var(--bg)}
+.desc{background:var(--bg2);border-radius:12px;padding:12px;margin-top:12px;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.desc b{font-weight:500}
+.hnbox{margin-top:24px}
+.hnbox h3{font-size:20px;font-weight:600;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}
+.stat{background:var(--bg2);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat span{color:var(--fg2);font-size:12px}
+.years{display:flex;align-items:flex-end;gap:3px;height:64px;margin:4px 0 2px}
+.years i{flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;position:relative}
+.years i.z{background:var(--bg3)}
+.ylab{display:flex;justify-content:space-between;color:var(--fg3);font-size:11px}
+.clist{margin:16px 0 0;padding:0;list-style:none;columns:2 260px;column-gap:24px}
+.clist li{break-inside:avoid;padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.clist li a:hover{color:var(--accent)}
+.clist .d{color:var(--fg3);white-space:nowrap}
+.subs li{display:block}
+.more{margin-top:8px;color:var(--fg2);font-weight:500}
+.more:hover{color:var(--fg)}
+.side-list .card{display:grid;grid-template-columns:168px 1fr;gap:8px;margin-bottom:8px}
+.side-list .thumb{border-radius:8px}
+.side-list .meta{padding:0}
+.side-list .title{font-size:14px;line-height:20px}
+.side-list .sub{font-size:12px;line-height:18px}
+.side-list .hn{margin-top:4px;font-size:11px;padding:1px 6px}
+
+.page-h{font-size:24px;font-weight:700;margin:20px 0 16px;display:flex;align-items:center;gap:12px}
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.cat{border-radius:12px;overflow:hidden;background:var(--bg2);display:block}
+.cat .mosaic{display:grid;grid-template-columns:1fr 1fr;aspect-ratio:16/9}
+.cat .mosaic img{width:100%;height:100%;object-fit:cover;display:block}
+.cat div.t{padding:10px 12px;font-weight:500;display:flex;justify-content:space-between}
+.cat div.t span{color:var(--fg2);font-weight:400}
+.settings{max-width:640px}
+.set{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+.set p{margin:2px 0 0;color:var(--fg2);font-size:13px}
+.set select,.set input[type=number]{background:var(--bg2);color:var(--fg);border:1px solid var(--frame);border-radius:8px;padding:6px 10px;font:inherit}
+.danger{color:#cc0000;font-weight:500}
+
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:none;place-items:center;padding:16px}
+.modal.open{display:grid}
+.dialog{background:var(--bg);color:var(--fg);border-radius:12px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:24px;box-shadow:var(--shadow)}
+.dialog h2{margin:0 0 12px;font-size:20px}
+.dialog p,.dialog li{color:var(--fg2);line-height:1.55}
+.dialog code{background:var(--bg2);padding:1px 5px;border-radius:4px;font-size:12.5px}
+.dialog .row{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.dialog label{display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;color:var(--fg)}
+.dialog input[type=text]{width:100%;background:var(--bg2);color:var(--fg);border:1px solid var(--frame);border-radius:8px;padding:8px 10px;font:inherit}
+.toast{position:fixed;left:16px;bottom:16px;z-index:60;background:var(--fg);color:var(--bg);padding:12px 16px;border-radius:8px;font-size:14px;opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+.loading{padding:120px 0;text-align:center;color:var(--fg2)}
+@media (max-width:1100px){.watch{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:800px){
+  nav.side{position:fixed;left:0;top:56px;z-index:30;background:var(--bg);transform:translateX(-100%);transition:transform .2s;box-shadow:var(--shadow)}
+  body.navopen nav.side{transform:none}
+  body.collapsed nav.side{width:220px;padding:12px}
+  body.collapsed nav.side a{flex-direction:row;gap:22px;height:40px;justify-content:flex-start;font-size:14px;padding:0 12px}
+  main{padding:0 16px 40px}
+  header{gap:8px;padding:0 8px}
+  .logo span.full{display:none}
+  .search button{width:48px}
+  .grid{grid-template-columns:1fr;gap:28px}
+  .side-list .card{grid-template-columns:140px 1fr}
+}
+@media (max-width:420px){.hright .hide-sm{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <button class="hbtn" id="menu" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v1.5H3zm0 5.25h18v1.5H3zm0 5.25h18V18H3z"/></svg></button>
+  <a class="logo" href="#/"><svg width="28" height="20" viewBox="0 0 28 20"><rect width="28" height="20" rx="5" fill="var(--accent)"/><path d="M11 5.5l8 4.5-8 4.5z" fill="#fff"/></svg><span class="full">Hacker<b>Tube</b></span></a>
+  <div class="search"><form id="sform" role="search"><input id="q" type="search" placeholder="Search" autocomplete="off" aria-label="Search"><button aria-label="Search"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></form></div>
+  <div class="hright">
+    <button class="hbtn hide-sm" id="help" aria-label="About"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 015 .9c0 1.7-2.5 2.2-2.5 3.8"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button>
+    <button class="hbtn" id="theme" aria-label="Toggle dark mode"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.6A8.5 8.5 0 019.4 3.5a8.5 8.5 0 1011.1 11.1z"/></svg></button>
+  </div>
+</header>
+<div class="layout">
+  <nav class="side" id="side">
+    <a href="#/" data-r="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg>Home</a>
+    <a href="#/longs" data-r="longs"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4-2.5z" fill="currentColor"/></svg>Longs</a>
+    <a href="#/liked" data-r="liked"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 11v9H4v-9zM7 11l4-8c1.5 0 2.5 1 2.5 2.5V9h5.2a2 2 0 012 2.3l-1.2 7a2 2 0 01-2 1.7H7"/></svg>Liked</a>
+    <a href="#/history" data-r="history"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 12a8.5 8.5 0 102.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8M12 7.5V12l3 2"/></svg>History</a>
+    <a href="#/later" data-r="later"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>Watch later</a>
+    <a href="#/categories" data-r="categories"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>Categories</a>
+    <a href="#/playlists" data-r="playlists"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M15 14v6l5-3z" fill="currentColor"/></svg>Playlists</a>
+    <a href="#/settings" data-r="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</a>
+    <hr>
+    <div class="foot" id="foot"></div>
+  </nav>
+  <main id="main"><div class="loading">Loading videos…</div></main>
+</div>
+<div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {
+  get(k, d){ try { const v = localStorage.getItem("ht:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v){ try { localStorage.setItem("ht:" + k, JSON.stringify(v)); } catch {} }
+};
+let DATA = [], BY = {}, META = {};
+const S = {
+  liked: store.get("liked", []), later: store.get("later", []), history: store.get("history", []),
+  playlists: store.get("playlists", []), settings: Object.assign({minRec: 0, hideWatched: false, autoplay: true, sort: "rec"}, store.get("settings", {})),
+};
+const save = k => store.set(k, S[k]);
+const F = { sort: S.settings.sort, dur: "any", cat: null, decade: null, q: "", rising: false };
+
+const fmtDur = s => { if (!s) return ""; const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return (h ? h + ":" + String(m).padStart(2,"0") : m) + ":" + String(x).padStart(2,"0"); };
+const fmtNum = n => n >= 1e9 ? (n/1e9).toFixed(n < 1e10 ? 1 : 0).replace(/\.0$/,"") + "B"
+  : n >= 1e6 ? (n/1e6).toFixed(n < 1e7 ? 1 : 0).replace(/\.0$/,"") + "M"
+  : n >= 1e3 ? (n/1e3).toFixed(n < 1e4 ? 1 : 0).replace(/\.0$/,"") + "K" : String(n);
+const ago = d => { if (!d) return ""; const s = (Date.now() - new Date(d).getTime())/1000;
+  const u = [[31536000,"year"],[2592000,"month"],[604800,"week"],[86400,"day"],[3600,"hour"],[60,"minute"]];
+  for (const [n,l] of u) if (s >= n) { const v = Math.floor(s/n); return v + " " + l + (v>1?"s":"") + " ago"; } return "just now"; };
+const date = t => new Date(t*1000).toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"});
+const span = v => v.years[0] === v.years[v.years.length-1] ? String(v.years[0]) : v.years[0] + "–" + v.years[v.years.length-1];
+const thumb = (id, q="hqdefault") => `https://i.ytimg.com/vi/${id}/${q}.jpg`;
+const toast = msg => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200); };
+
+const watched = () => new Set(S.history.map(h => h.id));
+function card(v){
+  const w = S.history.some(h => h.id === v.id);
+  return `<a class="card" href="#/watch/${v.id}">
+    <div class="thumb"><img loading="lazy" src="${thumb(v.id)}" alt="">${v.seconds ? `<span class="dur">${fmtDur(v.seconds)}</span>` : ""}${w ? `<span class="prog"><i></i></span>` : ""}</div>
+    <div class="meta"><h3 class="title" title="${esc(v.title)}">${esc(v.title)}</h3>
+    <div class="sub"><span class="ch">${esc(v.channel)}</span><br>${v.views ? fmtNum(v.views) + " views · " : ""}${ago(v.published)}</div>
+    <span class="hn" title="${v.rec} different HN users linked this across ${v.threads} threads, ${span(v)}">▲ ${v.rec} HNers · ${span(v)}</span></div></a>`;
+}
+
+const SORTS = {
+  rec: ["Most recommended", (a,b) => b.rec - a.rec || b.years.length - a.years.length],
+  threads: ["Most threads", (a,b) => b.threads - a.threads || b.rec - a.rec],
+  span: ["Longest-lived", (a,b) => (b.years.length - a.years.length) || b.rec - a.rec],
+  recent: ["Recently discussed", (a,b) => b.last - a.last],
+  views: ["Most viewed", (a,b) => b.views - a.views],
+  newest: ["Newest uploads", (a,b) => (b.published||"").localeCompare(a.published||"")],
+  oldest: ["Oldest uploads", (a,b) => (a.published||"9").localeCompare(b.published||"9")],
+};
+const DURS = { any: ["Any length", () => true], short: ["Under 4 minutes", v => v.seconds < 240],
+  mid: ["4–20 minutes", v => v.seconds >= 240 && v.seconds <= 1200], long: ["Over 20 minutes", v => v.seconds > 1200],
+  vlong: ["Over 1 hour", v => v.seconds > 3600] };
+function matchQ(v, q){
+  if (!q) return true;
+  const hay = (v.title + " " + v.channel + " " + v.category).toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+function apply(list, opts = {}){
+  const w = S.settings.hideWatched && !opts.keepWatched ? watched() : null;
+  let out = list.filter(v => v.rec >= S.settings.minRec && DURS[F.dur][1](v) && (!F.cat || v.category === F.cat) && (!F.rising || v.rising)
+    && (!F.decade || (v.published || "").startsWith(F.decade.slice(0,3))) && matchQ(v, F.q) && (!w || !w.has(v.id)));
+  if (!opts.keepOrder) out.sort(SORTS[F.sort][1]);
+  return out;
+}
+
+let io;
+function gridInto(el, list){
+  if (io) io.disconnect();
+  if (!list.length){ el.innerHTML = `<div class="empty"><h2>No videos here</h2><p>${F.q || F.cat || F.rising || F.dur !== "any" || F.decade ? "Try clearing some filters." : "Nothing to show yet."}</p></div>`; return; }
+  el.innerHTML = `<div class="grid"></div><div class="sentinel"></div>`;
+  const g = el.querySelector(".grid"), sen = el.querySelector(".sentinel"); let i = 0;
+  const more = () => { g.insertAdjacentHTML("beforeend", list.slice(i, i += 48).map(card).join("")); if (i >= list.length) io.disconnect(); };
+  io = new IntersectionObserver(es => es[0].isIntersecting && more(), {rootMargin: "1200px"});
+  more(); io.observe(sen);
+}
+
+function filterBar(){
+  const cats = [...new Set(DATA.map(v => v.category))].sort((a,b) => DATA.filter(v=>v.category===b).length - DATA.filter(v=>v.category===a).length);
+  const decades = [...new Set(DATA.map(v => (v.published||"").slice(0,3)).filter(Boolean))].sort().map(d => d + "0s");
+  const btn = (grp, key, label, on) => `<button data-f="${grp}" data-v="${esc(key)}" class="${on ? "on" : ""}">${esc(label)}</button>`;
+  return `<div class="bar">
+    <button class="chip" id="ftoggle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h10M17 6h4M3 12h4M11 12h10M3 18h12M19 18h2"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Filters</button>
+    <button class="chip ${!F.cat && !F.rising ? "on" : ""}" data-chip="">All</button>
+    <button class="chip ${F.rising ? "on" : ""}" id="rising" title="First linked on HN in the last 3 years">Rising</button>
+    ${cats.map(c => `<button class="chip ${F.cat === c ? "on" : ""}" data-chip="${esc(c)}">${esc(c)}</button>`).join("")}
+  </div>
+  <div class="panel" id="panel">
+    <div><h4>Sort by</h4>${Object.entries(SORTS).map(([k,[l]]) => btn("sort", k, l, F.sort === k)).join("")}</div>
+    <div><h4>Duration</h4>${Object.entries(DURS).filter(([k])=>k!=="any").map(([k,[l]]) => btn("dur", k, l, F.dur === k)).join("")}</div>
+    <div><h4>Uploaded</h4>${decades.reverse().map(d => btn("decade", d, d, F.decade === d)).join("")}</div>
+    <div><h4>Category</h4>${cats.map(c => btn("cat", c, c, F.cat === c)).join("")}</div>
+  </div><div class="status" id="status"></div><div id="gridwrap"></div>`;
+}
+function wireFilters(rerender){
+  const p = $("#panel");
+  if (store.get("panelOpen", false)) p.classList.add("open");
+  $("#ftoggle").onclick = () => { p.classList.toggle("open"); store.set("panelOpen", p.classList.contains("open")); };
+  document.querySelectorAll("[data-chip]").forEach(b => b.onclick = () => { F.cat = b.dataset.chip || null; if (!F.cat) F.rising = false; rerender(); });
+  $("#rising").onclick = () => { F.rising = !F.rising; rerender(); };
+  p.querySelectorAll("[data-f]").forEach(b => b.onclick = () => {
+    const g = b.dataset.f, v = b.dataset.v;
+    if (g === "sort") { F.sort = v; S.settings.sort = v; save("settings"); }
+    else if (g === "dur") F.dur = F.dur === v ? "any" : v;
+    else F[g] = F[g] === v ? null : v;
+    rerender();
+  });
+}
+function browse(title, base, opts = {}){
+  const m = $("#main");
+  const y = window.scrollY;
+  m.innerHTML = (title ? `<h1 class="page-h">${title}</h1>` : "") + filterBar();
+  wireFilters(() => { browse(title, base, opts); });
+  const list = apply(base, opts);
+  const parts = [`<b>${list.length.toLocaleString()}</b> video${list.length===1?"":"s"}`];
+  if (F.q) parts.push(`matching “${esc(F.q)}”`);
+  if (!opts.keepOrder) parts.push(`· ${SORTS[F.sort][0].toLowerCase()}`);
+  if (opts.note) parts.push(opts.note);
+  $("#status").innerHTML = parts.join(" ") + (F.q ? ` · <a href="#" id="clearq" style="color:var(--accent)">clear search</a>` : "");
+  const cq = $("#clearq"); if (cq) cq.onclick = e => { e.preventDefault(); F.q = ""; $("#q").value = ""; route(); };
+  gridInto($("#gridwrap"), list);
+  if (opts.keepScroll) window.scrollTo(0, y);
+}
+
+function watch(id){
+  const v = BY[id];
+  const m = $("#main");
+  if (!v){ m.innerHTML = `<div class="empty"><h2>Video not found</h2><p>This video isn't in the HackerTube index.</p><a class="pill" href="#/" style="display:inline-flex;margin-top:12px">Back home</a></div>`; return; }
+  S.history = [{id, t: Date.now()}, ...S.history.filter(h => h.id !== id)].slice(0, 500); save("history");
+  document.title = v.title + " - HackerTube";
+  const liked = S.liked.includes(id), later = S.later.includes(id);
+  const yrs = []; const y0 = Math.min(v.years[0], 2007), y1 = new Date().getFullYear();
+  const perYear = {}; v.comments.forEach(c => { const y = new Date(c[2]*1000).getUTCFullYear(); perYear[y] = (perYear[y]||0) + 1; });
+  v.subs.forEach(s => { const y = new Date(s.t*1000).getUTCFullYear(); perYear[y] = (perYear[y]||0) + 1; });
+  const maxY = Math.max(1, ...Object.values(perYear));
+  for (let y = y0; y <= y1; y++) yrs.push(`<i class="${perYear[y] ? "" : "z"}" style="height:${perYear[y] ? Math.max(6, perYear[y]/maxY*100) : 3}%" title="${y}: ${perYear[y]||0} mention${perYear[y]===1?"":"s"}"></i>`);
+  const comments = [...v.comments].reverse();
+  const related = DATA.filter(o => o.id !== id).map(o => [o, (o.channel === v.channel ? 3 : 0) + (o.category === v.category ? 1 : 0) + o.rec/1000]).sort((a,b) => b[1]-a[1]).slice(0, 20).map(x => x[0]);
+  const src = `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1${S.settings.autoplay ? "&autoplay=1" : ""}`;
+  m.innerHTML = `<div class="watch"><div>
+    <div class="player">${v.embeddable ? `<iframe src="${src}" title="${esc(v.title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`
+      : `<div class="noembed"><img src="${thumb(id,"hqdefault")}" alt=""><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">This video can't play here (embedding off, age or region limit). Watch on YouTube ↗</a></div>`}</div>
+    <h1 class="wtitle">${esc(v.title)}</h1>
+    <div class="wrow"><div class="wch"><div class="avatar">${esc((v.channel||"?").trim()[0] || "?")}</div><div><b>${esc(v.channel)}</b><span>${DATA.filter(o => o.channel === v.channel).length} video${DATA.filter(o => o.channel === v.channel).length===1?"":"s"} on HackerTube</span></div></div>
+      <div class="acts">
+        <button class="pill ${liked?"on":""}" id="like"><svg width="20" height="20" viewBox="0 0 24 24" fill="${liked?"currentColor":"none"}" stroke="currentColor" stroke-width="1.6"><path d="M7 11v9H4v-9zM7 11l4-8c1.5 0 2.5 1 2.5 2.5V9h5.2a2 2 0 012 2.3l-1.2 7a2 2 0 01-2 1.7H7"/></svg>${liked?"Liked":"Like"}</button>
+        <button class="pill ${later?"on":""}" id="later"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>${later?"Saved":"Watch later"}</button>
+        <button class="pill" id="addpl"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6"/></svg>Save</button>
+        <a class="pill" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">YouTube ↗</a>
+      </div></div>
+    <div class="desc"><b>${v.views ? v.views.toLocaleString() + " views" : ""}${v.published ? " · " + new Date(v.published).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : ""} · ${esc(v.category)}</b>${v.description ? "\n" + esc(v.description) + (v.description.length >= 600 ? "…" : "") : ""}</div>
+    <section class="hnbox">
+      <h3><svg width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="var(--accent)"/><path d="M7 6l5 7v5M17 6l-5 7" stroke="#fff" stroke-width="2" fill="none"/></svg>Why it's here</h3>
+      <div class="stats">
+        <div class="stat"><b>${v.rec}</b><span>different HN users linked it</span></div>
+        <div class="stat"><b>${v.threads}</b><span>separate threads</span></div>
+        <div class="stat"><b>${v.years.length}</b><span>distinct years</span></div>
+        <div class="stat"><b>${span(v)}</b><span>first → most recent</span></div>
+      </div>
+      <div class="years">${yrs.join("")}</div><div class="ylab"><span>${y0}</span><span>mentions per year</span><span>${y1}</span></div>
+      ${v.subs.length ? `<h4 style="margin:20px 0 0;font-weight:600">Submitted as a story</h4><ul class="clist subs">${v.subs.map(s => `<li><a href="https://news.ycombinator.com/item?id=${s.id}" target="_blank" rel="noopener">${esc(s.title || "(untitled)")}</a> <span class="d">${s.points} points · ${date(s.t)}</span></li>`).join("")}</ul>` : ""}
+      ${comments.length ? `<h4 style="margin:20px 0 0;font-weight:600">Comments linking it (${comments.length})</h4><ul class="clist" id="clist"></ul>${comments.length > 20 ? `<button class="more" id="cmore">Show all ${comments.length}</button>` : ""}` : ""}
+    </section></div>
+    <aside class="side-list"><h4 style="margin:0 0 12px;font-weight:600">Also recommended</h4>${related.map(card).join("")}</aside></div>`;
+  const cl = $("#clist");
+  const renderC = n => cl && (cl.innerHTML = comments.slice(0, n).map(c => `<li><a href="https://news.ycombinator.com/item?id=${c[0]}" target="_blank" rel="noopener">${esc(c[1])}</a><span class="d">${date(c[2])}</span></li>`).join(""));
+  renderC(20);
+  const cm = $("#cmore"); if (cm) cm.onclick = () => { renderC(comments.length); cm.remove(); };
+  $("#like").onclick = () => { toggleIn("liked", id); toast(S.liked.includes(id) ? "Added to Liked videos" : "Removed from Liked videos"); watchRefreshButtons(id); };
+  $("#later").onclick = () => { toggleIn("later", id); toast(S.later.includes(id) ? "Saved to Watch later" : "Removed from Watch later"); watchRefreshButtons(id); };
+  $("#addpl").onclick = () => playlistDialog(id);
+  window.scrollTo(0, 0);
+}
+function watchRefreshButtons(id){
+  const l = S.liked.includes(id), w = S.later.includes(id);
+  const lb = $("#like"), wb = $("#later");
+  lb.classList.toggle("on", l); lb.lastChild.textContent = l ? "Liked" : "Like"; lb.querySelector("svg").setAttribute("fill", l ? "currentColor" : "none");
+  wb.classList.toggle("on", w); wb.lastChild.textContent = w ? "Saved" : "Watch later";
+}
+function toggleIn(k, id){ S[k] = S[k].includes(id) ? S[k].filter(x => x !== id) : [id, ...S[k]]; save(k); }
+
+function playlistDialog(id){
+  const d = $("#dialog");
+  const draw = () => {
+    d.innerHTML = `<h2>Save to…</h2>${S.playlists.length ? S.playlists.map((p,i) => `<label><input type="checkbox" data-i="${i}" ${p.ids.includes(id)?"checked":""}> ${esc(p.name)} <span style="color:var(--fg3);margin-left:auto">${p.ids.length}</span></label>`).join("") : `<p>No playlists yet.</p>`}
+      <form id="newpl" style="display:flex;gap:8px;margin-top:12px"><input type="text" id="plname" placeholder="New playlist name" maxlength="80"><button class="pill">Create</button></form>
+      <div class="row"><button class="pill" id="close">Done</button></div>`;
+    d.querySelectorAll("input[type=checkbox]").forEach(c => c.onchange = () => { const p = S.playlists[+c.dataset.i]; p.ids = c.checked ? [...p.ids, id] : p.ids.filter(x => x !== id); save("playlists"); toast((c.checked ? "Added to " : "Removed from ") + p.name); });
+    $("#newpl").onsubmit = e => { e.preventDefault(); const n = $("#plname").value.trim(); if (!n) return; S.playlists.push({id: Date.now().toString(36), name: n, ids: [id]}); save("playlists"); toast("Added to " + n); draw(); };
+    $("#close").onclick = closeModal;
+  };
+  draw(); openModal();
+}
+function playlistsPage(){
+  const m = $("#main");
+  if (!S.playlists.length){ m.innerHTML = `<h1 class="page-h">Playlists</h1><div class="empty"><h2>No playlists yet</h2><p>Open any video and press <b>Save</b> to make one.</p></div>`; return; }
+  m.innerHTML = `<h1 class="page-h">Playlists</h1><div class="cats">${S.playlists.map(p => {
+    const ims = p.ids.slice(0,4); while (ims.length < 4) ims.push(null);
+    return `<a class="cat" href="#/playlist/${p.id}"><div class="mosaic">${ims.map(i => i ? `<img loading="lazy" src="${thumb(i,"mqdefault")}" alt="">` : `<div style="background:var(--bg3)"></div>`).join("")}</div><div class="t">${esc(p.name)} <span>${p.ids.length} video${p.ids.length===1?"":"s"}</span></div></a>`; }).join("")}</div>`;
+}
+function playlistPage(pid){
+  const p = S.playlists.find(x => x.id === pid);
+  if (!p){ $("#main").innerHTML = `<div class="empty"><h2>Playlist not found</h2></div>`; return; }
+  browse(`${esc(p.name)} <button class="pill danger" id="delpl" style="font-size:13px;height:30px">Delete playlist</button>`, p.ids.map(i => BY[i]).filter(Boolean), {keepOrder: true, keepWatched: true});
+  $("#delpl").onclick = () => { S.playlists = S.playlists.filter(x => x.id !== pid); save("playlists"); toast("Playlist deleted"); location.hash = "#/playlists"; };
+}
+
+function categoriesPage(){
+  const by = {}; DATA.forEach(v => (by[v.category] ||= []).push(v));
+  const cats = Object.entries(by).sort((a,b) => b[1].length - a[1].length);
+  $("#main").innerHTML = `<h1 class="page-h">Categories</h1><div class="cats">${cats.map(([c, vs]) => `<a class="cat" href="#/category/${encodeURIComponent(c)}"><div class="mosaic">${vs.slice(0,4).map(v => `<img loading="lazy" src="${thumb(v.id,"mqdefault")}" alt="">`).join("")}${"<div style='background:var(--bg3)'></div>".repeat(Math.max(0, 4 - vs.length))}</div><div class="t">${esc(c)} <span>${vs.length}</span></div></a>`).join("")}</div>
+    <p class="status" style="margin-top:20px">Categories are the ones each uploader picked on YouTube.</p>`;
+}
+
+function settingsPage(){
+  const st = S.settings;
+  $("#main").innerHTML = `<h1 class="page-h">Settings</h1><div class="settings">
+    <div class="set"><div><b>Theme</b><p>Light, dark, or follow your system.</p></div><select id="s-theme"><option value="">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+    <div class="set"><div><b>Minimum HN recommenders</b><p>Hide videos linked by fewer distinct HN users. The index starts at ${META.minRec}.</p></div><input type="number" id="s-min" min="0" max="200" value="${st.minRec}" style="width:80px"></div>
+    <div class="set"><div><b>Hide watched videos</b><p>Leave videos in your history out of Home and the other lists.</p></div><input type="checkbox" id="s-hide" ${st.hideWatched?"checked":""}></div>
+    <div class="set"><div><b>Autoplay</b><p>Start playing when you open a video.</p></div><input type="checkbox" id="s-auto" ${st.autoplay?"checked":""}></div>
+    <div class="set"><div><b>Clear watch history</b><p>${S.history.length} video${S.history.length===1?"":"s"} in history.</p></div><button class="pill danger" id="s-clear">Clear</button></div>
+    <div class="set"><div><b>Export your data</b><p>Likes, Watch later, playlists and history as JSON.</p></div><button class="pill" id="s-export">Download</button></div>
+    <p class="status" style="margin-top:16px">Everything you save stays in this browser.</p></div>`;
+  $("#s-theme").value = store.get("theme", "");
+  $("#s-theme").onchange = e => setTheme(e.target.value);
+  $("#s-min").onchange = e => { st.minRec = Math.max(0, +e.target.value || 0); save("settings"); toast("Saved"); };
+  $("#s-hide").onchange = e => { st.hideWatched = e.target.checked; save("settings"); toast("Saved"); };
+  $("#s-auto").onchange = e => { st.autoplay = e.target.checked; save("settings"); toast("Saved"); };
+  $("#s-clear").onclick = () => { S.history = []; save("history"); toast("History cleared"); settingsPage(); };
+  $("#s-export").onclick = () => { const b = new Blob([JSON.stringify({liked:S.liked, later:S.later, playlists:S.playlists, history:S.history}, null, 2)], {type:"application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "hackertube-data.json"; a.click(); };
+}
+
+const openModal = () => $("#modal").classList.add("open");
+const closeModal = () => $("#modal").classList.remove("open");
+$("#modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#q").focus(); } });
+$("#help").onclick = () => {
+  $("#dialog").innerHTML = `<h2>What is HackerTube?</h2>
+    <p>Every video here is one that Hacker News users have linked <b>again and again, over several years</b>. Nothing is hand-picked.</p>
+    <p>How the list is built:</p>
+    <ol>
+      <li>Every HN comment and story that mentions YouTube (about 640k items, 2007 to ${META.generated?.slice(0,4)}) is pulled from the public <code>hn.algolia.com</code> API.</li>
+      <li>Video IDs are taken out of every <code>youtube.com/watch</code>, <code>youtu.be</code>, <code>/embed/</code>, <code>/shorts/</code> and <code>/live/</code> link.</li>
+      <li>A video is <b>included</b> only if at least <b>${META.minRec} different HN accounts</b> linked it, in at least <b>${META.minYears} different calendar years</b>. A single user posting the same link many times still counts as one.</li>
+      <li>Newer videos can't have ${META.minYears} years of history yet, so a video first linked in the last 3 years also qualifies as <b>Rising</b> if 5+ different accounts linked it in 5+ separate threads, with mentions spread over at least 2 months (so a single news spike doesn't count).</li>
+      <li>Videos that have been deleted or made private are dropped, and so is the Rickroll (it's a prank, not a recommendation). Title, channel, length, views and category come from YouTube.</li>
+    </ol>
+    <p>The orange <b>▲ N HNers</b> badge shows how many different people recommended the video, and over which years. Open a video to see every comment that links it.</p>
+    <p style="font-size:12.5px">Data snapshot: ${esc(META.generated)} · ${DATA.length.toLocaleString()} videos. Press <code>/</code> to search.</p>
+    <div class="row"><button class="pill" id="close">Close</button></div>`;
+  $("#close").onclick = closeModal; openModal();
+};
+
+function setTheme(t){ store.set("theme", t); if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
+setTheme(store.get("theme", ""));
+$("#theme").onclick = () => { const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; setTheme(dark ? "light" : "dark"); };
+
+$("#menu").onclick = () => { if (innerWidth <= 800) document.body.classList.toggle("navopen"); else { document.body.classList.toggle("collapsed"); store.set("collapsed", document.body.classList.contains("collapsed")); } };
+if (store.get("collapsed", false)) document.body.classList.add("collapsed");
+$("#side").addEventListener("click", e => { if (e.target.closest("a")) document.body.classList.remove("navopen"); });
+$("#sform").onsubmit = e => {
+  e.preventDefault(); F.q = $("#q").value.trim(); $("#q").blur();
+  if (/^#\/(longs|liked|history|later|playlist\/)/.test(location.hash) || ["", "#", "#/"].includes(location.hash)) route();
+  else location.hash = "#/";
+};
+
+function route(){
+  const h = location.hash.replace(/^#\/?/, "");
+  const [r, arg] = [h.split("/")[0] || "home", decodeURIComponent(h.split("/").slice(1).join("/"))];
+  document.querySelectorAll("nav.side a").forEach(a => a.classList.toggle("on", a.dataset.r === r || (r === "category" && a.dataset.r === "categories") || (r === "playlist" && a.dataset.r === "playlists")));
+  if (r !== "watch") document.title = "HackerTube";
+  const ids = arr => arr.map(i => BY[i]).filter(Boolean);
+  switch (r){
+    case "watch": return watch(arg);
+    case "longs": return browse("Longs", DATA.filter(v => v.seconds > 1200), {note: "· over 20 minutes"});
+    case "liked": return browse("Liked videos", ids(S.liked), {keepOrder: true, keepWatched: true});
+    case "later": return browse("Watch later", ids(S.later), {keepOrder: true, keepWatched: true});
+    case "history": {
+      browse(`History ${S.history.length ? `<button class="pill" id="hclear" style="font-size:13px;height:30px">Clear all</button>` : ""}`, ids(S.history.map(x => x.id)), {keepOrder: true, keepWatched: true});
+      const hc = $("#hclear"); if (hc) hc.onclick = () => { S.history = []; save("history"); route(); };
+      return;
+    }
+    case "categories": return categoriesPage();
+    case "category": F.cat = arg; location.replace("#/"); return;
+    case "playlists": return playlistsPage();
+    case "playlist": return playlistPage(arg);
+    case "settings": return settingsPage();
+    default: return browse("", DATA);
+  }
+}
+window.addEventListener("hashchange", route);
+
+fetch("videos.json").then(r => r.json()).then(d => {
+  META = d; DATA = d.videos; DATA.forEach(v => BY[v.id] = v);
+  $("#foot").innerHTML = `${DATA.length.toLocaleString()} videos linked by many different HN users across the years.<br>Data from <a href="https://hn.algolia.com" target="_blank" rel="noopener">HN Algolia</a> · ${esc(d.generated)}`;
+  route();
+}).catch(e => { $("#main").innerHTML = `<div class="empty"><h2>Couldn't load videos.json</h2><p>${esc(e.message)}. Serve this folder over HTTP, e.g. <code>python3 -m http.server</code>.</p></div>`; });
+})();
+</script>
+</body>
+</html>
